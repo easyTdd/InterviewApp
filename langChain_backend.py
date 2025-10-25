@@ -5,6 +5,13 @@ from pydantic import BaseModel
 from pydantic import BaseModel
 from typing import Optional
 
+from langchain.chat_models import init_chat_model
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain.agents import create_agent
+import json
+
+checkpointer = InMemorySaver()
+
 class BackgroundVoice(BaseModel):
     what_was_good: str
     mistakes_made: str
@@ -178,25 +185,29 @@ def get_openai_response(
         history,
         parameters):
 
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    client = OpenAI(api_key=OPENAI_API_KEY)
-
-    systemPrompt = {
-        "role": "system", 
-        "content": prompts[-1]["content"].format(**parameters)
-    }
-
-    fullInput = [systemPrompt] + history
-
-    response = client.responses.parse(
-        model=parameters["model"],
-        input=fullInput,
+    model = init_chat_model(
+        f"openai:{parameters['model']}",
         temperature=parameters["temperature"],
-        top_p=parameters["top_p"],
-        text_format=InterviewerResponse
+        top_p=parameters["top_p"]
     )
 
+    agent = create_agent(
+        model=model,
+        system_prompt=prompts[-1]["content"].format(**parameters),
+        response_format=InterviewerResponse,
+        checkpointer=checkpointer
+    )
+
+    result = agent.invoke(
+        {"messages": [history[-1]]},
+        config={"configurable": {"thread_id": parameters["thread_id"]}}
+    )
+
+    print(result)
+
+    raw_text = json.dumps(result['structured_response'].model_dump(), indent=2)
+
     return {
-        "output_text": response.output_text,
-        "output_parsed": response.output_parsed
+        "output_text": raw_text,
+        "output_parsed": result['structured_response']
     }
