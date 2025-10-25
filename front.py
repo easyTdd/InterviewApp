@@ -96,8 +96,6 @@ else:
 
     st.text_area("Type your message...", key="user_input", on_change=on_user_input_change)
 
-    st.button("Send", on_click=on_user_input_change)
-
     st.markdown(
         """
         <script>
