@@ -6,8 +6,6 @@ from backend import get_openai_response
 openai_api_key = st.secrets["OPENAI_API_KEY"]    
 os.environ["OPENAI_API_KEY"] = openai_api_key
 
-st.write(f"API Key set successfully. {openai_api_key}")
-
 def on_user_input_change():
     if(st.session_state.user_input.strip() == ""):
         return
